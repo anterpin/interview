@@ -1,24 +1,20 @@
 # Introduction
-This project is an interview exercise at Teleport.  
-It is a simple job scheduling service provided by and HTTPs server.  
-It is divided in major parts:
+This project is an application exercise for Teleport.  
+It is a simple job scheduling service provided by a HTTPs server.  
+It is divided in three major parts:
 - Client CLI
 - HTTP RESTful API
 - Process scheduling library
 
-# Build
+# Install
 This respository is based on go modules, make sure go can use them.
 
     go env -w GO111MODULE=auto
 
-Then install all dependencies
-
-    go mod tidy
+Go will automatically install all the dependencies on `go build` or `go test`
 
 # Testing
-## Process scheduling library
-
-From the project directory
+In order to test the scheduling process library, access the library folder (from the project root directory).
 
     cd ./server/manager
 
