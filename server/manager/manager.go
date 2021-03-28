@@ -24,19 +24,19 @@ func NewManager() Manager {
 	}
 }
 
-func (this *Manager) AddUser(userid int) {
-	_, exists := this.userProcesses[userid]
+func (manager *Manager) AddUser(userid int) {
+	_, exists := manager.userProcesses[userid]
 	if exists {
 		log.Printf("User id %d already exist", userid)
 		return
 	}
 
-	this.mutex.Lock()
-	defer this.mutex.Unlock()
+	manager.mutex.Lock()
+	defer manager.mutex.Unlock()
 
 	userProcessesPtr := new(UserProcesses)
 	userProcessesPtr.processes = make(map[uuid.UUID]Process)
-	this.userProcesses[userid] = userProcessesPtr
+	manager.userProcesses[userid] = userProcessesPtr
 }
 
 type UserProcesses struct {
@@ -44,27 +44,26 @@ type UserProcesses struct {
 	mutex     sync.Mutex
 }
 
-func (this *Manager) getUserProcesses(userid int) (*UserProcesses, bool) {
-
-	userProcesses, exists := this.userProcesses[userid]
+func (manager *Manager) getUserProcesses(userid int) (*UserProcesses, bool) {
+	userProcesses, exists := manager.userProcesses[userid]
 	if !exists {
 		// if should not exist
 		// it prints to warn the server
 		// but in any case it will return the create a new user process hashmap
 		log.Printf("Unknown user id %d in process hashmap", userid)
-		this.AddUser(userid)
-		userProcesses = this.userProcesses[userid]
+		manager.AddUser(userid)
+		userProcesses = manager.userProcesses[userid]
 	}
 	return userProcesses, exists
 }
 
-func (this *Manager) getUserProcess(processId string, userid int, callback func(Process) (interface{}, error)) (interface{}, error) {
+func (manager *Manager) getUserProcess(processId string, userid int, callback func(Process) (interface{}, error)) (interface{}, error) {
 	id, err := uuid.FromString(processId)
 	if err != nil {
 		// not a valid v4 id, in this case it accepts every type of id
 		return nil, err
 	}
-	userProcesses, _ := this.getUserProcesses(userid)
+	userProcesses, _ := manager.getUserProcesses(userid)
 
 	userProcesses.mutex.Lock()
 	defer userProcesses.mutex.Unlock()
@@ -72,26 +71,26 @@ func (this *Manager) getUserProcess(processId string, userid int, callback func(
 	process, exists := userProcesses.processes[id]
 	// program with this id does not exist
 	if !exists {
-		return nil, fmt.Errorf("Do not exist process id %s", processId)
+		return nil, fmt.Errorf("do not exist process id %s", processId)
 	}
 	return callback(process)
 }
 
-func (this *Manager) Start(command string, userid int) (string, error) {
+func (manager *Manager) Start(command string, userid int) (string, error) {
 	args := strings.Fields(command)
 	// empty command
 	if len(args) == 0 {
-		return "", errors.New("Empty Command")
+		return "", errors.New("empty Command")
 	}
 
 	// generate the uuid
-	processid := uuid.NewV4()
+	processid := uuid.NewV1()
 	process, err := Create(args[0], args[1:]...)
 	if err != nil {
 		return "", err
 	}
 
-	userProcesses, _ := this.getUserProcesses(userid)
+	userProcesses, _ := manager.getUserProcesses(userid)
 
 	userProcesses.mutex.Lock()
 	defer userProcesses.mutex.Unlock()
@@ -101,8 +100,8 @@ func (this *Manager) Start(command string, userid int) (string, error) {
 	return processid.String(), nil
 }
 
-func (this *Manager) Status(processId string, userid int) (*os.ProcessState, error) {
-	result, err := this.getUserProcess(processId, userid, func(process Process) (interface{}, error) {
+func (manager *Manager) Status(processId string, userid int) (*os.ProcessState, error) {
+	result, err := manager.getUserProcess(processId, userid, func(process Process) (interface{}, error) {
 		return process.Status(), nil
 	})
 	if err != nil {
@@ -115,8 +114,8 @@ func (this *Manager) Status(processId string, userid int) (*os.ProcessState, err
 	return result.(*os.ProcessState), nil
 }
 
-func (this *Manager) Stop(processId string, userid int) error {
-	_, err := this.getUserProcess(processId, userid, func(process Process) (interface{}, error) {
+func (manager *Manager) Stop(processId string, userid int) error {
+	_, err := manager.getUserProcess(processId, userid, func(process Process) (interface{}, error) {
 		err := process.Kill()
 		if err != nil {
 			return nil, err
@@ -127,8 +126,8 @@ func (this *Manager) Stop(processId string, userid int) error {
 	return err
 }
 
-func (this *Manager) Log(processId string, userid int) (string, error) {
-	result, err := this.getUserProcess(processId, userid, func(process Process) (interface{}, error) {
+func (manager *Manager) Log(processId string, userid int) (string, error) {
+	result, err := manager.getUserProcess(processId, userid, func(process Process) (interface{}, error) {
 		return process.Log(), nil
 	})
 
@@ -139,8 +138,8 @@ func (this *Manager) Log(processId string, userid int) (string, error) {
 	return result.(string), nil
 }
 
-func (this *Manager) List(userid int) []string {
-	userProcesses, _ := this.getUserProcesses(userid)
+func (manager *Manager) List(userid int) []string {
+	userProcesses, _ := manager.getUserProcesses(userid)
 
 	userProcesses.mutex.Lock()
 	defer userProcesses.mutex.Unlock()
